@@ -108,10 +108,11 @@ function Sidebar({ count }: SidebarProps) {
       }
       const questionToSave = { ...question, options: filteredOptions, teacherId: selectedTeacher }
 
-      if (activeId) {
-         updateQuestion(questionToSave)
-         toast.success('Pregunta actualizado')
-      } else {
+       if (activeId) {
+          updateQuestion(questionToSave)
+          toast.success('Pregunta actualizado')
+          setQuestion(initialState(selectedTeacher))
+       } else {
          addQuestion(questionToSave)
          toast.success('Pregunta registrado')
          setQuestion(initialState(selectedTeacher))
