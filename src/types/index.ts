@@ -5,6 +5,7 @@ export type Option = {
 
 export type Question = {
    id: string;
+   number: number;
    questionText: string;
    feedback: string;
    options: Option[];
@@ -12,7 +13,7 @@ export type Question = {
    image?: string;
 }
 
-export type DraftQuestion = Omit<Question, 'id'>
+export type DraftQuestion = Omit<Question, 'id' | 'number'>
 
 export type Teacher = {
    id: string;

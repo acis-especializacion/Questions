@@ -6,6 +6,7 @@ import type { DraftQuestion, Question } from "./types";
 type QuestionState = {
    questions: Question[]
    activeId: Question['id']
+   nextNumber: number
    addQuestion: (data: DraftQuestion) => void
    deleteQuestion: (id: Question['id']) => void
    getQuestionById: (id: Question['id']) => void
@@ -15,8 +16,8 @@ type QuestionState = {
    setQuestionImage: (id: string, image?: string) => void
 }
 
-const createQuestion = (question: DraftQuestion) : Question => {
-   return { ...question, id: uuidv4() }
+const createQuestion = (question: DraftQuestion, number: number): Question => {
+   return { ...question, id: uuidv4(), number }
 }
 
 export const useQuestionStore = create<QuestionState>() (
@@ -24,25 +25,38 @@ export const useQuestionStore = create<QuestionState>() (
       persist((set) => ({
          questions: [],
          activeId: '',
+         nextNumber: 1,
          addQuestion: (data) => {
-            const newQuestion = createQuestion(data)
-            set((state) => ({
-               questions: [...state.questions, newQuestion]
-            }))
+            set((state) => {
+               const newQuestion = createQuestion(data, state.nextNumber)
+               return {
+                  questions: [...state.questions, newQuestion],
+                  nextNumber: state.nextNumber + 1
+               }
+            })
          },
          deleteQuestion: (id) => {
-            set((state) => ({
-               questions: state.questions.filter(question => question.id !== id)
-            }))
+            set((state) => {
+               const remaining = state.questions.filter(question => question.id !== id)
+               const renumbered = remaining.map((q, i) => ({ ...q, number: i + 1 }))
+               return {
+                  questions: renumbered,
+                  nextNumber: renumbered.length + 1
+               }
+            })
          },
          getQuestionById: (id) => {
             set(() => ({
                activeId: id
             }))
          },
-          updateQuestion: (data) => {
+         updateQuestion: (data) => {
             set((state) => ({
-               questions: state.questions.map( question => question.id === state.activeId ? {id: state.activeId, ...data, image: data.image ?? question.image} : question),
+               questions: state.questions.map(question =>
+                  question.id === state.activeId
+                     ? { id: state.activeId, number: question.number, ...data, image: data.image ?? question.image }
+                     : question
+               ),
                activeId: ''
             }))
          },
@@ -51,9 +65,10 @@ export const useQuestionStore = create<QuestionState>() (
                activeId: ''
             })
          },
-          resetApp: () => {
+         resetApp: () => {
             set({
-               questions: []
+               questions: [],
+               nextNumber: 1
             })
          },
          setQuestionImage: (id, image) => {
@@ -62,7 +77,21 @@ export const useQuestionStore = create<QuestionState>() (
             }))
          }
       }), {
-         name: 'questions-store'
+         name: 'questions-store',
+         onRehydrateStorage: () => (state) => {
+            if (!state || !state.questions) return
+            let changed = false
+            state.questions.forEach((q, i) => {
+               if (typeof q.number !== 'number') {
+                  q.number = i + 1
+                  changed = true
+               }
+            })
+            if (changed) {
+               state.nextNumber = state.questions.length + 1
+               useQuestionStore.setState({ questions: [...state.questions], nextNumber: state.nextNumber })
+            }
+         }
       })
    )
 )

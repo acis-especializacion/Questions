@@ -5,12 +5,11 @@ import { useQuestionStore } from "../store";
 import { toast } from "react-toastify";
 
 type QuizDetailProps = {
-   numero: number
    question: Question
    onView: (question: Question) => void
 }
 
-function QuizDetail({question, numero, onView}: QuizDetailProps) {
+function QuizDetail({question, onView}: QuizDetailProps) {
 
    const teachers = getTeachers()
    const teacher = teachers.find(t => t.id === question.teacherId)
@@ -28,7 +27,7 @@ function QuizDetail({question, numero, onView}: QuizDetailProps) {
    return (
       <div className="bg-slate-200 p-3 rounded-lg flex flex-col md:flex-row text-sm">
          <div className="flex-1">
-            <p><strong>{String(numero).padStart(2, '0')}:</strong> {question.questionText} {question.image && <span className="text-xs text-blue-600 font-semibold bg-blue-100 px-1.5 py-0.5 rounded ml-1">Imagen</span>}</p>
+            <p><strong>{String(question.number ?? 0).padStart(2, '0')}:</strong> {question.questionText} {question.image && <span className="text-xs text-blue-600 font-semibold bg-blue-100 px-1.5 py-0.5 rounded ml-1">Imagen</span>}</p>
             {teacher && <p className="text-xs text-blue-700 font-medium"><strong>Docente:</strong> {teacher.name}</p>}
             {correctOption && <p className="text-green-700 font-bold text-xs mt-1">✓ {labelOptions(correctIndex)} {correctOption.text}</p>}
             <p className="text-xs py-0.5 italic text-gray-500">{question.feedback}</p>

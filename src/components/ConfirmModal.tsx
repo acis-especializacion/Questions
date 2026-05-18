@@ -1,5 +1,11 @@
 import { XMarkIcon, ExclamationTriangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
 
+type TeacherOption = {
+   id: string
+   name: string
+   count: number
+}
+
 type ConfirmModalProps = {
    open: boolean
    icon: 'warning' | 'download'
@@ -11,6 +17,9 @@ type ConfirmModalProps = {
    confirmClass?: string
    onConfirm: () => void
    onCancel: () => void
+   teachers?: TeacherOption[]
+   selectedTeachers?: string[]
+   onTeacherToggle?: (id: string) => void
 }
 
 function ConfirmModal({
@@ -23,7 +32,10 @@ function ConfirmModal({
    cancelLabel = 'Cancelar',
    confirmClass = 'bg-blue-700 hover:bg-blue-800',
    onConfirm,
-   onCancel
+   onCancel,
+   teachers,
+   selectedTeachers,
+   onTeacherToggle
 }: ConfirmModalProps) {
 
    if (!open) return null
@@ -53,7 +65,27 @@ function ConfirmModal({
                <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
                <p className="text-sm text-gray-600 mb-4">{message}</p>
 
-               {details && details.length > 0 && (
+               {teachers ? (
+                  <div className="text-sm space-y-1 mb-4">
+                     <p className="text-gray-600 mb-2">Seleccione docentes a incluir:</p>
+                     {teachers.map(t => (
+                        <label
+                           key={t.id}
+                           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer ${
+                              selectedTeachers?.includes(t.id) ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600'
+                           }`}
+                        >
+                           <input
+                              type="checkbox"
+                              className="cursor-pointer accent-blue-600"
+                              checked={selectedTeachers?.includes(t.id) ?? false}
+                              onChange={() => onTeacherToggle?.(t.id)}
+                           />
+                           {t.name} <span className="text-xs text-gray-400">({t.count} preguntas)</span>
+                        </label>
+                     ))}
+                  </div>
+               ) : details && details.length > 0 && (
                   <ul className="text-sm text-gray-600 space-y-1 mb-4 text-left bg-gray-50 p-3 rounded-lg">
                      {details.map((d, i) => (
                         <li key={i} className="flex items-center gap-2">
