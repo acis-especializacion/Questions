@@ -6,14 +6,13 @@ import type { DraftQuestion, Question } from "./types";
 type QuestionState = {
    questions: Question[]
    activeId: Question['id']
-   modal: boolean
    addQuestion: (data: DraftQuestion) => void
    deleteQuestion: (id: Question['id']) => void
    getQuestionById: (id: Question['id']) => void
    updateQuestion: (data: DraftQuestion) => void
-   showModal: () => void
    closeModal: () => void
    resetApp: () => void
+   setQuestionImage: (id: string, image?: string) => void
 }
 
 const createQuestion = (question: DraftQuestion) : Question => {
@@ -25,12 +24,10 @@ export const useQuestionStore = create<QuestionState>() (
       persist((set) => ({
          questions: [],
          activeId: '',
-         modal: false,
          addQuestion: (data) => {
             const newQuestion = createQuestion(data)
             set((state) => ({
-               questions: [...state.questions, newQuestion],
-               modal: false
+               questions: [...state.questions, newQuestion]
             }))
          },
          deleteQuestion: (id) => {
@@ -40,32 +37,29 @@ export const useQuestionStore = create<QuestionState>() (
          },
          getQuestionById: (id) => {
             set(() => ({
-               activeId: id,
-               modal: true
+               activeId: id
             }))
          },
-         updateQuestion: (data) => {
+          updateQuestion: (data) => {
             set((state) => ({
-               questions: state.questions.map( question => question.id === state.activeId ? {id: state.activeId, ...data} : question),
-               modal: false,
+               questions: state.questions.map( question => question.id === state.activeId ? {id: state.activeId, ...data, image: data.image ?? question.image} : question),
                activeId: ''
             }))
-         },
-         showModal: () => {
-            set({
-               modal: true
-            })
          },
          closeModal: () => {
             set({
-               modal: false,
                activeId: ''
             })
          },
-         resetApp: () => {
+          resetApp: () => {
             set({
                questions: []
             })
+         },
+         setQuestionImage: (id, image) => {
+            set((state) => ({
+               questions: state.questions.map(q => q.id === id ? { ...q, image } : q)
+            }))
          }
       }), {
          name: 'questions-store'
