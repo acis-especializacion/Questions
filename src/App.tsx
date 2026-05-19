@@ -62,7 +62,7 @@ function App() {
    const handleResetAll = () => setConfirmAction('reset')
 
    const handleOpenDownload = () => {
-      const allIds = allTeachers.map(t => t.id)
+      const allIds = allTeachers.filter(t => t.count > 0).map(t => t.id)
       setSelectedDownloadTeachers(allIds)
       setConfirmAction('download')
    }
@@ -271,7 +271,7 @@ function App() {
 
                <div className="p-4 bg-slate-300 flex justify-between items-center text-xs border-t border-gray-400">
                   <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-blue-800 font-bold cursor-pointer">Nelson Huamán</a></span>
-                  <span className="font-bold">Versión 5.0</span>
+                  <span className="font-bold">Versión 5.1</span>
                </div>
             </div>
          </div>

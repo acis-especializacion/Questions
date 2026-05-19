@@ -68,22 +68,25 @@ function ConfirmModal({
                {teachers ? (
                   <div className="text-sm space-y-1 mb-4">
                      <p className="text-gray-600 mb-2">Seleccione docentes a incluir:</p>
-                     {teachers.map(t => (
-                        <label
-                           key={t.id}
-                           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer ${
-                              selectedTeachers?.includes(t.id) ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600'
-                           }`}
-                        >
-                           <input
-                              type="checkbox"
-                              className="cursor-pointer accent-blue-600"
-                              checked={selectedTeachers?.includes(t.id) ?? false}
-                              onChange={() => onTeacherToggle?.(t.id)}
-                           />
-                           {t.name} <span className="text-xs text-gray-400">({t.count} preguntas)</span>
-                        </label>
-                     ))}
+                      {teachers.map(t => (
+                         <label
+                            key={t.id}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
+                               t.count === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                            } ${
+                               selectedTeachers?.includes(t.id) ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600'
+                            }`}
+                         >
+                            <input
+                               type="checkbox"
+                               className={`accent-blue-600 ${t.count === 0 ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                               checked={selectedTeachers?.includes(t.id) ?? false}
+                               disabled={t.count === 0}
+                               onChange={() => onTeacherToggle?.(t.id)}
+                            />
+                            {t.name} <span className="text-xs text-gray-400">({t.count} preguntas)</span>
+                         </label>
+                      ))}
                   </div>
                ) : details && details.length > 0 && (
                   <ul className="text-sm text-gray-600 space-y-1 mb-4 text-left bg-gray-50 p-3 rounded-lg">

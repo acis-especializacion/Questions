@@ -105,10 +105,11 @@ function Sidebar({ count }: SidebarProps) {
          toast.error('Las alternativas no pueden repetirse')
          return
       }
-      if (!activeId && isDuplicateQuestion) {
-         toast.error('Pregunta ya registrada')
-         return
-      }
+       if (!activeId && isDuplicateQuestion) {
+          toast.error('Pregunta ya registrada')
+          setQuestion(initialState(selectedTeacher))
+          return
+       }
       const questionToSave = { ...question, options: filteredOptions, teacherId: selectedTeacher }
 
        if (activeId) {
