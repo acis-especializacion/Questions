@@ -168,12 +168,12 @@ function App() {
 
    return (
       <>
-         <div className="flex flex-col lg:flex-row min-h-screen">
+          <div className="flex flex-col lg:flex-row h-screen lg:overflow-hidden">
             <Sidebar
                count={questions.length}
             />
             <div className="flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-gray-300">
-               <div className="flex-1 overflow-y-scroll">
+                <div className="flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between py-2 px-4 w-full z-10 shadow-lg sticky top-0 bg-white">
                      <h1 className="font-bold text-base">Lista de <span className="text-blue-800">Preguntas</span></h1>
                      <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ function App() {
 
                <div className="p-4 bg-slate-300 flex justify-between items-center text-xs border-t border-gray-400">
                   <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-blue-800 font-bold cursor-pointer">Nelson Huamán</a></span>
-                  <span className="font-bold">Versión 4.0</span>
+                  <span className="font-bold">Versión 4.5</span>
                </div>
             </div>
          </div>
