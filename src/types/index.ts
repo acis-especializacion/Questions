@@ -19,3 +19,11 @@ export type Teacher = {
    id: string;
    name: string;
 }
+
+export type ParsedQuestionData = {
+   questionText: string
+   feedback: string
+   options: Option[]
+   teacherName: string
+   image?: string
+}

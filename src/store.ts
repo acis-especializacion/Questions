@@ -28,10 +28,11 @@ export const useQuestionStore = create<QuestionState>() (
          nextNumber: 1,
          addQuestion: (data) => {
             set((state) => {
-               const newQuestion = createQuestion(data, state.nextNumber)
+               const num = Math.max(1, state.nextNumber)
+               const newQuestion = createQuestion(data, num)
                return {
                   questions: [...state.questions, newQuestion],
-                  nextNumber: state.nextNumber + 1
+                  nextNumber: num + 1
                }
             })
          },

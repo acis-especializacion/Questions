@@ -1,22 +1,29 @@
-import { ArrowDownTrayIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
+import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
 import QuizDetail from "./components/QuizDetail";
 import Sidebar from "./components/Sidebar";
 import ViewModal from "./components/ViewModal";
 import ConfirmModal from "./components/ConfirmModal";
 import Welcome from "./components/Welcome";
 import { useQuestionStore } from "./store";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, type ChangeEvent } from "react";
 import { toast, ToastContainer } from "react-toastify";
-import { getTeachers, hasTeachers } from "./utils";
-import type { Question } from "./types";
+import { getTeachers, hasTeachers, saveTeachers, parseQuestionsFromXML } from "./utils";
+import type { Question, ParsedQuestionData } from "./types";
+import { v4 as uuidv4 } from "uuid";
 
-type ConfirmAction = 'reset' | 'download' | null
+type ConfirmAction = 'reset' | 'download' | 'restore' | null
 
 function App() {
 
    const [viewingId, setViewingId] = useState<string | null>(null)
    const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
    const [selectedDownloadTeachers, setSelectedDownloadTeachers] = useState<string[]>([])
+   const [restoreData, setRestoreData] = useState<{
+      questions: ParsedQuestionData[]
+      teacherNames: string[]
+      fileName: string
+   } | null>(null)
+   const fileInputRef = useRef<HTMLInputElement>(null)
    const questions = useQuestionStore(state => state.questions)
    const resetApp = useQuestionStore(state => state.resetApp)
    const hasQuestions = useMemo(() => questions.length > 0, [questions])
@@ -66,6 +73,19 @@ function App() {
       )
    }
 
+   const handleFileRestore = (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+         const result = parseQuestionsFromXML(reader.result as string)
+         setRestoreData({ ...result, fileName: file.name })
+         setConfirmAction('restore')
+      }
+      reader.readAsText(file)
+      e.target.value = ''
+   }
+
    const handleConfirm = () => {
       if (confirmAction === 'reset') {
          resetApp()
@@ -74,6 +94,25 @@ function App() {
          window.location.reload()
       } else if (confirmAction === 'download') {
          handleGenerateXML()
+      } else if (confirmAction === 'restore' && restoreData) {
+         localStorage.removeItem('questions-store')
+         localStorage.removeItem('docentes')
+         useQuestionStore.setState({ questions: [], nextNumber: 1 })
+         const teachers = restoreData.teacherNames.map(name => ({ id: uuidv4(), name }))
+         saveTeachers(teachers)
+         const addQuestion = useQuestionStore.getState().addQuestion
+         restoreData.questions.forEach(q => {
+            const teacher = teachers.find(t => t.name === q.teacherName)
+            addQuestion({
+               questionText: q.questionText,
+               feedback: q.feedback,
+               options: q.options,
+               teacherId: teacher?.id || '',
+               image: q.image
+            })
+         })
+         toast.success('XML restaurado correctamente')
+         window.location.reload()
       }
       setConfirmAction(null)
    }
@@ -176,20 +215,35 @@ function App() {
                 <div className="flex-1 overflow-y-auto min-h-0">
                   <div className="flex items-center justify-between py-2 px-4 w-full z-10 shadow-lg sticky top-0 bg-white">
                      <h1 className="font-bold text-base">Lista de <span className="text-blue-800">Preguntas</span></h1>
-                     <div className="flex items-center gap-3">
-                        <button
-                           type="button"
-                           className="cursor-pointer text-red-600 hover:text-red-800 disabled:opacity-10 disabled:cursor-not-allowed"
-                           disabled={!hasQuestions}
-                           onClick={handleResetAll}
-                        ><ArrowPathIcon className="size-5" /></button>
-                        <button
-                           type="button"
-                           className="cursor-pointer disabled:opacity-10 disabled:cursor-not-allowed"
-                           disabled={!hasQuestions}
-                              onClick={handleOpenDownload}
-                        ><ArrowDownTrayIcon className="size-5 text-black" /></button>
-                     </div>
+                      <div className="flex items-center gap-5">
+                         <button
+                            type="button"
+                            className="cursor-pointer text-red-600 hover:text-red-800 disabled:opacity-10 disabled:cursor-not-allowed"
+                            disabled={!hasQuestions}
+                            onClick={handleResetAll}
+                            title="Reiniciar"
+                         ><ArrowPathIcon className="size-5" /></button>
+                         <button
+                            type="button"
+                            className="cursor-pointer text-green-700 hover:text-green-800"
+                            onClick={() => fileInputRef.current?.click()}
+                            title="Restaurar XML"
+                         ><ArrowUpOnSquareIcon className="size-5" /></button>
+                         <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".xml"
+                            className="hidden"
+                            onChange={handleFileRestore}
+                         />
+                         <button
+                            type="button"
+                            className="cursor-pointer disabled:opacity-10 disabled:cursor-not-allowed"
+                            disabled={!hasQuestions}
+                            onClick={handleOpenDownload}
+                            title="Descargar XML"
+                         ><ArrowDownTrayIcon className="size-5 text-black" /></button>
+                      </div>
                   </div>
                   <div className="p-3 flex flex-col gap-3">
                      {hasQuestions ? (
@@ -217,35 +271,40 @@ function App() {
 
                <div className="p-4 bg-slate-300 flex justify-between items-center text-xs border-t border-gray-400">
                   <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-blue-800 font-bold cursor-pointer">Nelson Huamán</a></span>
-                  <span className="font-bold">Versión 4.5</span>
+                  <span className="font-bold">Versión 5.0</span>
                </div>
             </div>
          </div>
           <ConfirmModal
-             open={confirmAction !== null}
-             icon={confirmAction === 'reset' ? 'warning' : 'download'}
-             title={confirmAction === 'reset' ? 'Reiniciar Aplicación' : 'Descargar XML'}
-             message={
-                confirmAction === 'reset'
-                   ? '¿Está seguro de reiniciar la aplicación?'
-                   : 'Confirme la descarga del cuestionario'
-             }
-             details={
-                confirmAction === 'reset'
-                   ? ['Se eliminarán todas las preguntas', 'Se eliminará la lista de docentes', 'Esta acción no se puede deshacer']
-                   : undefined
-             }
-             teachers={confirmAction === 'download' ? allTeachers : undefined}
-             selectedTeachers={confirmAction === 'download' ? selectedDownloadTeachers : undefined}
-             onTeacherToggle={confirmAction === 'download' ? handleTeacherToggle : undefined}
-             confirmLabel={confirmAction === 'reset' ? 'Sí, reiniciar' : 'Sí, descargar'}
-             confirmClass={confirmAction === 'reset' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-700 hover:bg-blue-800'}
-             onConfirm={handleConfirm}
-             onCancel={() => {
-                setConfirmAction(null)
-                setSelectedDownloadTeachers([])
-             }}
-          />
+              open={confirmAction !== null}
+              icon={confirmAction === 'reset' ? 'warning' : confirmAction === 'download' ? 'download' : 'upload'}
+              title={confirmAction === 'reset' ? 'Reiniciar Aplicación' : confirmAction === 'download' ? 'Descargar XML' : 'Restaurar XML'}
+              message={
+                 confirmAction === 'reset'
+                    ? '¿Está seguro de reiniciar la aplicación?'
+                    : confirmAction === 'download'
+                    ? 'Confirme la descarga del cuestionario'
+                    : 'Se importarán las preguntas del archivo seleccionado'
+              }
+              details={
+                 confirmAction === 'reset'
+                    ? ['Se eliminarán todas las preguntas', 'Se eliminará la lista de docentes', 'Esta acción no se puede deshacer']
+                    : confirmAction === 'restore' && restoreData
+                    ? ['Se limpiarán todos los datos actuales', `${restoreData.questions.length} preguntas`, `${restoreData.teacherNames.length} docente(s)`, `Archivo: ${restoreData.fileName}`]
+                    : undefined
+              }
+              teachers={confirmAction === 'download' ? allTeachers : undefined}
+              selectedTeachers={confirmAction === 'download' ? selectedDownloadTeachers : undefined}
+              onTeacherToggle={confirmAction === 'download' ? handleTeacherToggle : undefined}
+              confirmLabel={confirmAction === 'reset' ? 'Sí, reiniciar' : confirmAction === 'download' ? 'Sí, descargar' : 'Sí, restaurar'}
+              confirmClass={confirmAction === 'reset' ? 'bg-red-600 hover:bg-red-700' : confirmAction === 'download' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-green-600 hover:bg-green-700'}
+              onConfirm={handleConfirm}
+              onCancel={() => {
+                 setConfirmAction(null)
+                 setSelectedDownloadTeachers([])
+                 setRestoreData(null)
+              }}
+           />
          <ViewModal question={viewingQuestion} onClose={() => setViewingId(null)} />
          <ToastContainer pauseOnHover={false} pauseOnFocusLoss={false} />
       </>

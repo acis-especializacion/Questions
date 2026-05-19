@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo, type ChangeEvent, type FormEvent } from "
 import { useQuestionStore } from "../store"
 import { getTeachers, capitalizeFirstLetter, labelOptions } from "../utils"
 import TeacherCombobox from "./TeacherCombobox"
+import TeacherModal from "./TeacherModal"
+import { Cog6ToothIcon } from "@heroicons/react/24/solid"
 import { toast } from "react-toastify"
 import type { DraftQuestion, Option } from "../types"
 
@@ -32,6 +34,7 @@ function Sidebar({ count }: SidebarProps) {
 
    const [selectedTeacher, setSelectedTeacher] = useState(teachers.length > 0 ? teachers[0].id : '')
    const [question, setQuestion] = useState(initialState(selectedTeacher))
+   const [teacherModalOpen, setTeacherModalOpen] = useState(false)
 
    useEffect(() => {
       if (activeId) {
@@ -134,13 +137,22 @@ function Sidebar({ count }: SidebarProps) {
             </p>
          </div>
 
-         <div className="mb-4 relative">
-            <label className="block text-xs font-bold text-slate-200 mb-1">Docente:</label>
-            <TeacherCombobox
-               value={activeId ? question.teacherId : selectedTeacher}
-               onChange={handleTeacherChange}
-            />
-         </div>
+          <div className="mb-4 relative">
+             <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-200">Docente:</label>
+                <button
+                   type="button"
+                   onClick={() => setTeacherModalOpen(true)}
+                   className="text-slate-300 hover:text-white cursor-pointer"
+                   title="Gestionar docentes"
+                ><Cog6ToothIcon className="size-4" /></button>
+             </div>
+             <TeacherCombobox
+                value={activeId ? question.teacherId : selectedTeacher}
+                onChange={handleTeacherChange}
+             />
+             {teacherModalOpen && <TeacherModal onClose={() => setTeacherModalOpen(false)} />}
+          </div>
 
          <div className="bg-white rounded-lg p-3 lg:p-4 flex flex-col lg:flex-1 min-h-0">
             <form className="flex flex-col flex-1 min-h-0" onSubmit={handleSubmit}>

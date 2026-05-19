@@ -1,4 +1,4 @@
-import { XMarkIcon, ExclamationTriangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
+import { XMarkIcon, ExclamationTriangleIcon, ShieldCheckIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/outline"
 
 type TeacherOption = {
    id: string
@@ -8,7 +8,7 @@ type TeacherOption = {
 
 type ConfirmModalProps = {
    open: boolean
-   icon: 'warning' | 'download'
+   icon: 'warning' | 'download' | 'upload'
    title: string
    message: string
    details?: string[]
@@ -40,9 +40,9 @@ function ConfirmModal({
 
    if (!open) return null
 
-   const IconComponent = icon === 'warning' ? ExclamationTriangleIcon : ShieldCheckIcon
-   const iconBg = icon === 'warning' ? 'bg-red-100' : 'bg-blue-100'
-   const iconColor = icon === 'warning' ? 'text-red-600' : 'text-blue-600'
+   const IconComponent = icon === 'warning' ? ExclamationTriangleIcon : icon === 'download' ? ShieldCheckIcon : ArrowUpOnSquareIcon
+   const iconBg = icon === 'warning' ? 'bg-red-100' : icon === 'download' ? 'bg-blue-100' : 'bg-green-100'
+   const iconColor = icon === 'warning' ? 'text-red-600' : icon === 'download' ? 'text-blue-600' : 'text-green-600'
 
    return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
