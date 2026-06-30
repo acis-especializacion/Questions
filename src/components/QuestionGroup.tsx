@@ -10,9 +10,10 @@ type QuestionGroupProps = {
    teacherId: string
    questions: Question[]
    onView: (question: Question) => void
+   onDeleteRequest?: (id: string) => void
 }
 
-function QuestionGroup({ teacherName, teacherId, questions, onView }: QuestionGroupProps) {
+function QuestionGroup({ teacherName, teacherId, questions, onView, onDeleteRequest }: QuestionGroupProps) {
    const teachers = useTeacherStore(s => s.teachers)
    const teacherIndex = teachers.findIndex(t => t.id === teacherId)
    const color = teacherIndex >= 0 ? getTeacherColor(teacherIndex) : null
@@ -48,7 +49,7 @@ function QuestionGroup({ teacherName, teacherId, questions, onView }: QuestionGr
          >
             <div className="space-y-1">
                {questions.map(q => (
-                  <QuestionItem key={q.id} question={q} onView={onView} />
+                   <QuestionItem key={q.id} question={q} onView={onView} onDeleteRequest={onDeleteRequest} />
                ))}
             </div>
          </div>

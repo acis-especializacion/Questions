@@ -6,7 +6,7 @@ import ConfirmModal from "./components/ConfirmModal";
 import Welcome from "./components/Welcome";
 import { useQuestionStore } from "./store";
 import { useTeacherStore } from "./store/teacherStore";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import type { Question } from "./types";
 
@@ -15,16 +15,42 @@ type ConfirmAction = 'reset' | 'download' | null
 function App() {
 
     const [viewingId, setViewingId] = useState<string | null>(null)
+   const [deletingId, setDeletingId] = useState<string | null>(null)
    const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
    const [selectedDownloadTeachers, setSelectedDownloadTeachers] = useState<string[]>([])
+   const [storageInfo, setStorageInfo] = useState<{ used: number; quota: number } | null>(null)
    const questions = useQuestionStore(state => state.questions)
    const teachers = useTeacherStore(s => s.teachers)
    const resetApp = useQuestionStore(state => state.resetApp)
+   const deleteQuestion = useQuestionStore(state => state.deleteQuestion)
    const hasQuestions = useMemo(() => questions.length > 0, [questions])
    const viewingQuestion = useMemo(
       () => viewingId ? questions.find(q => q.id === viewingId) ?? null : null,
       [viewingId, questions]
    )
+   const deletingQuestion = useMemo(
+      () => deletingId ? questions.find(q => q.id === deletingId) ?? null : null,
+      [deletingId, questions]
+   )
+
+   useEffect(() => {
+      let totalBytes = 0
+      for (let i = 0; i < localStorage.length; i++) {
+         const key = localStorage.key(i)
+         if (key) {
+            totalBytes += (key.length + (localStorage.getItem(key)?.length ?? 0)) * 2
+         }
+      }
+      const usedMB = totalBytes / (1024 * 1024)
+      navigator.storage.estimate().then(est => {
+         setStorageInfo({
+            used: usedMB,
+            quota: (est.quota ?? 5 * 1024 * 1024) / (1024 * 1024)
+         })
+      }).catch(() => {
+         setStorageInfo({ used: usedMB, quota: 5 })
+      })
+   }, [questions, teachers])
 
    const allTeachers = useMemo(() => {
       return teachers.map(t => ({
@@ -75,6 +101,14 @@ function App() {
          handleGenerateXML()
       }
       setConfirmAction(null)
+   }
+
+   const handleDeleteConfirm = () => {
+      if (deletingId) {
+         deleteQuestion(deletingId)
+         toast.error('Pregunta eliminada')
+         setDeletingId(null)
+      }
    }
 
    const handleGenerateXML = () => {
@@ -177,7 +211,12 @@ function App() {
                         </div>
                         <h1 className="font-bold text-sm text-white leading-tight">Lista de Preguntas</h1>
                      </div>
-                     <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        {storageInfo && (
+                           <span className="text-[10px] text-slate-500 font-mono mr-1" title="Uso de localStorage / Cuota del navegador">
+                              {storageInfo.used.toFixed(2)} / {storageInfo.quota.toFixed(0)} MB
+                           </span>
+                        )}
                         <button
                            type="button"
                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-red-900/20 text-red-400 hover:bg-red-900/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
@@ -195,13 +234,14 @@ function App() {
                   <div className="p-4 space-y-5">
                      {hasQuestions ? (
                         groupedQuestions.map(group => (
-                           <QuestionGroup
-                              key={group.teacherId}
-                              teacherName={group.teacherName}
-                              teacherId={group.teacherId}
-                              questions={group.questions}
-                              onView={(q: Question) => setViewingId(q.id)}
-                           />
+                            <QuestionGroup
+                               key={group.teacherId}
+                               teacherName={group.teacherName}
+                               teacherId={group.teacherId}
+                               questions={group.questions}
+                               onView={(q: Question) => setViewingId(q.id)}
+                               onDeleteRequest={(id) => setDeletingId(id)}
+                            />
                         ))
                      ) : (
                         <div className="flex items-center justify-center py-16">
@@ -241,8 +281,23 @@ function App() {
                   setConfirmAction(null)
                   setSelectedDownloadTeachers([])
                }}
+             />
+            <ConfirmModal
+               open={deletingId !== null}
+               icon="warning"
+               title="Eliminar Pregunta"
+               message={
+                  deletingQuestion
+                     ? `¿Está seguro de eliminar la pregunta #${String(deletingQuestion.number).padStart(2, '0')}?`
+                     : '¿Está seguro de eliminar esta pregunta?'
+               }
+               details={['Esta acción no se puede deshacer']}
+               confirmLabel="Sí, eliminar"
+               confirmClass="bg-red-600 hover:bg-red-700"
+               onConfirm={handleDeleteConfirm}
+               onCancel={() => setDeletingId(null)}
             />
-         <ViewModal question={viewingQuestion} onClose={() => setViewingId(null)} />
+          <ViewModal question={viewingQuestion} onClose={() => setViewingId(null)} />
          <ToastContainer pauseOnHover={false} pauseOnFocusLoss={false} />
       </>
    )

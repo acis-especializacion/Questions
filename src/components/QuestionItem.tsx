@@ -1,21 +1,15 @@
 import { TrashIcon, PencilSquareIcon, EyeIcon, PhotoIcon } from "@heroicons/react/24/solid"
 import { useQuestionStore } from "../store"
-import { toast } from "react-toastify"
 import type { Question } from "../types"
 
 type QuestionItemProps = {
    question: Question
    onView: (question: Question) => void
+   onDeleteRequest?: (id: string) => void
 }
 
-function QuestionItem({ question, onView }: QuestionItemProps) {
-   const deleteQuestion = useQuestionStore(s => s.deleteQuestion)
+function QuestionItem({ question, onView, onDeleteRequest }: QuestionItemProps) {
    const getQuestionById = useQuestionStore(s => s.getQuestionById)
-
-   const handleDelete = () => {
-      deleteQuestion(question.id)
-      toast.error('Pregunta eliminada')
-   }
 
    return (
       <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 hover:bg-slate-700/50 hover:border-slate-600 transition-colors group">
@@ -37,7 +31,7 @@ function QuestionItem({ question, onView }: QuestionItemProps) {
             ><PencilSquareIcon className="size-4" /></button>
             <button
                type="button"
-               onClick={handleDelete}
+               onClick={() => onDeleteRequest?.(question.id)}
                className="cursor-pointer p-1 text-red-400 hover:text-red-300 transition-colors"
                title="Eliminar"
             ><TrashIcon className="size-4" /></button>
