@@ -1,30 +1,24 @@
-import { ArrowDownTrayIcon, ArrowPathIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/solid";
-import QuizDetail from "./components/QuizDetail";
+import { ArrowDownTrayIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
+import QuestionGroup from "./components/QuestionGroup";
 import Sidebar from "./components/Sidebar";
 import ViewModal from "./components/ViewModal";
 import ConfirmModal from "./components/ConfirmModal";
 import Welcome from "./components/Welcome";
 import { useQuestionStore } from "./store";
-import { useMemo, useState, useRef, type ChangeEvent } from "react";
+import { useTeacherStore } from "./store/teacherStore";
+import { useMemo, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
-import { getTeachers, hasTeachers, saveTeachers, parseQuestionsFromXML } from "./utils";
-import type { Question, ParsedQuestionData } from "./types";
-import { v4 as uuidv4 } from "uuid";
+import type { Question } from "./types";
 
-type ConfirmAction = 'reset' | 'download' | 'restore' | null
+type ConfirmAction = 'reset' | 'download' | null
 
 function App() {
 
-   const [viewingId, setViewingId] = useState<string | null>(null)
+    const [viewingId, setViewingId] = useState<string | null>(null)
    const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
    const [selectedDownloadTeachers, setSelectedDownloadTeachers] = useState<string[]>([])
-   const [restoreData, setRestoreData] = useState<{
-      questions: ParsedQuestionData[]
-      teacherNames: string[]
-      fileName: string
-   } | null>(null)
-   const fileInputRef = useRef<HTMLInputElement>(null)
    const questions = useQuestionStore(state => state.questions)
+   const teachers = useTeacherStore(s => s.teachers)
    const resetApp = useQuestionStore(state => state.resetApp)
    const hasQuestions = useMemo(() => questions.length > 0, [questions])
    const viewingQuestion = useMemo(
@@ -33,31 +27,29 @@ function App() {
    )
 
    const allTeachers = useMemo(() => {
-      const teachers = getTeachers()
       return teachers.map(t => ({
          ...t,
          count: questions.filter(q => q.teacherId === t.id).length
       }))
-   }, [questions])
+   }, [teachers, questions])
 
    const groupedQuestions = useMemo(() => {
-      const teachers = getTeachers()
-      const groups: { teacherName: string; questions: Question[] }[] = []
+      const groups: { teacherName: string; teacherId: string; questions: Question[] }[] = []
       const seen = new Set<string>()
       questions.forEach(q => {
          const teacher = teachers.find(t => t.id === q.teacherId)
          const name = teacher ? teacher.name : 'Sin docente'
          if (!seen.has(q.teacherId)) {
             seen.add(q.teacherId)
-            groups.push({ teacherName: name, questions: [] })
+            groups.push({ teacherName: name, teacherId: q.teacherId, questions: [] })
          }
-         const group = groups.find(g => g.teacherName === name)
+         const group = groups.find(g => g.teacherId === q.teacherId)
          if (group) group.questions.push(q)
       })
       return groups
-   }, [questions])
+   }, [questions, teachers])
 
-   if (!hasTeachers()) return <Welcome />
+   if (teachers.length === 0) return <Welcome />
 
    const handleResetAll = () => setConfirmAction('reset')
 
@@ -73,19 +65,6 @@ function App() {
       )
    }
 
-   const handleFileRestore = (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file) return
-      const reader = new FileReader()
-      reader.onload = () => {
-         const result = parseQuestionsFromXML(reader.result as string)
-         setRestoreData({ ...result, fileName: file.name })
-         setConfirmAction('restore')
-      }
-      reader.readAsText(file)
-      e.target.value = ''
-   }
-
    const handleConfirm = () => {
       if (confirmAction === 'reset') {
          resetApp()
@@ -94,31 +73,11 @@ function App() {
          window.location.reload()
       } else if (confirmAction === 'download') {
          handleGenerateXML()
-      } else if (confirmAction === 'restore' && restoreData) {
-         localStorage.removeItem('questions-store')
-         localStorage.removeItem('docentes')
-         useQuestionStore.setState({ questions: [], nextNumber: 1 })
-         const teachers = restoreData.teacherNames.map(name => ({ id: uuidv4(), name }))
-         saveTeachers(teachers)
-         const addQuestion = useQuestionStore.getState().addQuestion
-         restoreData.questions.forEach(q => {
-            const teacher = teachers.find(t => t.name === q.teacherName)
-            addQuestion({
-               questionText: q.questionText,
-               feedback: q.feedback,
-               options: q.options,
-               teacherId: teacher?.id || '',
-               image: q.image
-            })
-         })
-         toast.success('XML restaurado correctamente')
-         window.location.reload()
       }
       setConfirmAction(null)
    }
 
    const handleGenerateXML = () => {
-      const teachers = getTeachers()
       const filtered = selectedDownloadTeachers.length > 0
          ? questions.filter(q => selectedDownloadTeachers.includes(q.teacherId))
          : questions
@@ -208,103 +167,81 @@ function App() {
    return (
       <>
           <div className="flex flex-col lg:flex-row h-screen lg:overflow-hidden">
-            <Sidebar
-               count={questions.length}
-            />
-            <div className="flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-gray-300">
+            <Sidebar />
+            <div className="flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-slate-700 bg-slate-900">
                 <div className="flex-1 overflow-y-auto min-h-0">
-                  <div className="flex items-center justify-between py-2 px-4 w-full z-10 shadow-lg sticky top-0 bg-white">
-                     <h1 className="font-bold text-base">Lista de <span className="text-blue-800">Preguntas</span></h1>
-                      <div className="flex items-center gap-5">
-                         <button
-                            type="button"
-                            className="cursor-pointer text-red-600 hover:text-red-800 disabled:opacity-10 disabled:cursor-not-allowed"
-                            disabled={!hasQuestions}
-                            onClick={handleResetAll}
-                            title="Reiniciar"
-                         ><ArrowPathIcon className="size-5" /></button>
-                         <button
-                            type="button"
-                            className="cursor-pointer text-green-700 hover:text-green-800"
-                            onClick={() => fileInputRef.current?.click()}
-                            title="Restaurar XML"
-                         ><ArrowUpOnSquareIcon className="size-5" /></button>
-                         <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".xml"
-                            className="hidden"
-                            onChange={handleFileRestore}
-                         />
-                         <button
-                            type="button"
-                            className="cursor-pointer disabled:opacity-10 disabled:cursor-not-allowed"
-                            disabled={!hasQuestions}
-                            onClick={handleOpenDownload}
-                            title="Descargar XML"
-                         ><ArrowDownTrayIcon className="size-5 text-black" /></button>
-                      </div>
-                  </div>
-                  <div className="p-3 flex flex-col gap-3">
+                   <div className="flex items-center justify-between py-3 px-4 w-full sticky top-0 bg-slate-800/95 backdrop-blur border-b border-slate-700 z-10">
+                     <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30">
+                           <span className="text-xs font-bold text-blue-400">{questions.length}</span>
+                        </div>
+                        <h1 className="font-bold text-sm text-white leading-tight">Lista de Preguntas</h1>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <button
+                           type="button"
+                           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-red-900/20 text-red-400 hover:bg-red-900/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                           disabled={!hasQuestions}
+                           onClick={handleResetAll}
+                        ><ArrowPathIcon className="size-3.5" /> Reiniciar</button>
+                        <button
+                           type="button"
+                           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-blue-900/20 text-blue-400 hover:bg-blue-900/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                           disabled={!hasQuestions}
+                           onClick={handleOpenDownload}
+                        ><ArrowDownTrayIcon className="size-3.5" /> Descargar</button>
+                     </div>
+                   </div>
+                  <div className="p-4 space-y-5">
                      {hasQuestions ? (
-                        <>
-                           {groupedQuestions.map(group => (
-                              <div key={group.teacherName}>
-                                 <h2 className="font-bold text-sm text-blue-800 bg-blue-50 p-2 rounded-lg mb-2">
-                                    {group.teacherName} <span className="font-normal text-gray-500">({group.questions.length} preguntas)</span>
-                                 </h2>
-                                  {group.questions.map(question => (
-                                     <QuizDetail
-                                        key={question.id}
-                                        question={question}
-                                        onView={(q: Question) => setViewingId(q.id)}
-                                     />
-                                  ))}
-                              </div>
-                           ))}
-                        </>
+                        groupedQuestions.map(group => (
+                           <QuestionGroup
+                              key={group.teacherId}
+                              teacherName={group.teacherName}
+                              teacherId={group.teacherId}
+                              questions={group.questions}
+                              onView={(q: Question) => setViewingId(q.id)}
+                           />
+                        ))
                      ) : (
-                        <p className="text-center text-sm">Aún no cuenta con preguntas registrados</p>
+                        <div className="flex items-center justify-center py-16">
+                           <p className="text-sm text-slate-500">Aún no cuenta con preguntas registradas</p>
+                        </div>
                      )}
                   </div>
                </div>
 
-               <div className="p-4 bg-slate-300 flex justify-between items-center text-xs border-t border-gray-400">
-                  <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-blue-800 font-bold cursor-pointer">Nelson Huamán</a></span>
-                  <span className="font-bold">Versión 5.1</span>
+               <div className="p-3 bg-slate-800 flex justify-between items-center text-[11px] text-slate-500 border-t border-slate-700">
+                  <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-slate-400 hover:text-white transition-colors font-bold cursor-pointer">Nelson Huamán</a></span>
+                  <span className="font-bold">Versión 6.0</span>
                </div>
             </div>
          </div>
-          <ConfirmModal
-              open={confirmAction !== null}
-              icon={confirmAction === 'reset' ? 'warning' : confirmAction === 'download' ? 'download' : 'upload'}
-              title={confirmAction === 'reset' ? 'Reiniciar Aplicación' : confirmAction === 'download' ? 'Descargar XML' : 'Restaurar XML'}
-              message={
-                 confirmAction === 'reset'
-                    ? '¿Está seguro de reiniciar la aplicación?'
-                    : confirmAction === 'download'
-                    ? 'Confirme la descarga del cuestionario'
-                    : 'Se importarán las preguntas del archivo seleccionado'
-              }
-              details={
-                 confirmAction === 'reset'
-                    ? ['Se eliminarán todas las preguntas', 'Se eliminará la lista de docentes', 'Esta acción no se puede deshacer']
-                    : confirmAction === 'restore' && restoreData
-                    ? ['Se limpiarán todos los datos actuales', `${restoreData.questions.length} preguntas`, `${restoreData.teacherNames.length} docente(s)`, `Archivo: ${restoreData.fileName}`]
-                    : undefined
-              }
-              teachers={confirmAction === 'download' ? allTeachers : undefined}
-              selectedTeachers={confirmAction === 'download' ? selectedDownloadTeachers : undefined}
-              onTeacherToggle={confirmAction === 'download' ? handleTeacherToggle : undefined}
-              confirmLabel={confirmAction === 'reset' ? 'Sí, reiniciar' : confirmAction === 'download' ? 'Sí, descargar' : 'Sí, restaurar'}
-              confirmClass={confirmAction === 'reset' ? 'bg-red-600 hover:bg-red-700' : confirmAction === 'download' ? 'bg-blue-700 hover:bg-blue-800' : 'bg-green-600 hover:bg-green-700'}
-              onConfirm={handleConfirm}
-              onCancel={() => {
-                 setConfirmAction(null)
-                 setSelectedDownloadTeachers([])
-                 setRestoreData(null)
-              }}
-           />
+           <ConfirmModal
+               open={confirmAction !== null}
+               icon={confirmAction === 'reset' ? 'warning' : 'download'}
+               title={confirmAction === 'reset' ? 'Reiniciar Aplicación' : 'Descargar XML'}
+               message={
+                  confirmAction === 'reset'
+                     ? '¿Está seguro de reiniciar la aplicación?'
+                     : 'Confirme la descarga del cuestionario'
+               }
+               details={
+                  confirmAction === 'reset'
+                     ? ['Se eliminarán todas las preguntas', 'Se eliminará la lista de docentes', 'Esta acción no se puede deshacer']
+                     : undefined
+               }
+               teachers={confirmAction === 'download' ? allTeachers : undefined}
+               selectedTeachers={confirmAction === 'download' ? selectedDownloadTeachers : undefined}
+               onTeacherToggle={confirmAction === 'download' ? handleTeacherToggle : undefined}
+               confirmLabel={confirmAction === 'reset' ? 'Sí, reiniciar' : 'Sí, descargar'}
+               confirmClass={confirmAction === 'reset' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-700 hover:bg-blue-800'}
+               onConfirm={handleConfirm}
+               onCancel={() => {
+                  setConfirmAction(null)
+                  setSelectedDownloadTeachers([])
+               }}
+            />
          <ViewModal question={viewingQuestion} onClose={() => setViewingId(null)} />
          <ToastContainer pauseOnHover={false} pauseOnFocusLoss={false} />
       </>

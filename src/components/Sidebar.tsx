@@ -1,25 +1,20 @@
 import { useEffect, useState, useMemo, type ChangeEvent, type FormEvent } from "react"
 import { useQuestionStore } from "../store"
-import { getTeachers, capitalizeFirstLetter, labelOptions } from "../utils"
-import TeacherCombobox from "./TeacherCombobox"
-import TeacherModal from "./TeacherModal"
-import { Cog6ToothIcon } from "@heroicons/react/24/solid"
+import { useTeacherStore } from "../store/teacherStore"
+import { capitalizeFirstLetter, labelOptions } from "../utils"
+import TeacherSelector from "./TeacherSelector"
+import TeacherPanel from "./TeacherPanel"
 import { toast } from "react-toastify"
 import type { DraftQuestion, Option } from "../types"
 
-type SidebarProps = {
-   count: number
-}
-
-function Sidebar({ count }: SidebarProps) {
+function Sidebar() {
 
    const addQuestion = useQuestionStore(state => state.addQuestion)
    const updateQuestion = useQuestionStore(state => state.updateQuestion)
    const activeId = useQuestionStore(state => state.activeId)
    const questions = useQuestionStore(state => state.questions)
    const closeModal = useQuestionStore(state => state.closeModal)
-
-   const teachers = getTeachers()
+   const teachers = useTeacherStore(s => s.teachers)
 
    const initialState = (teacherId: string): DraftQuestion => ({
       questionText: '',
@@ -34,7 +29,7 @@ function Sidebar({ count }: SidebarProps) {
 
    const [selectedTeacher, setSelectedTeacher] = useState(teachers.length > 0 ? teachers[0].id : '')
    const [question, setQuestion] = useState(initialState(selectedTeacher))
-   const [teacherModalOpen, setTeacherModalOpen] = useState(false)
+   const [teacherPanelOpen, setTeacherPanelOpen] = useState(false)
 
    useEffect(() => {
       if (activeId) {
@@ -129,119 +124,127 @@ function Sidebar({ count }: SidebarProps) {
    }
 
    return (
-      <aside className="lg:w-2/5 bg-slate-900 p-3 lg:p-4 flex flex-col lg:h-screen lg:overflow-hidden">
-         <div className="flex items-center justify-between mb-4">
+      <aside className="lg:w-2/5 lg:min-w-80 bg-slate-800 p-3 lg:p-4 flex flex-col lg:h-screen lg:overflow-hidden">
+         <div className="flex items-center mb-4">
             <img src="/logo-acis.svg" alt="Logo Acis" className="w-12" />
-            <p className="flex items-center gap-1 text-white font-black">
-               <span className="text-xl">{count}</span>
-               <span className="text-sm font-bold">Preguntas</span>
-            </p>
          </div>
 
-          <div className="mb-4 relative">
-             <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-200">Docente:</label>
-                <button
-                   type="button"
-                   onClick={() => setTeacherModalOpen(true)}
-                   className="text-slate-300 hover:text-white cursor-pointer"
-                   title="Gestionar docentes"
-                ><Cog6ToothIcon className="size-4" /></button>
-             </div>
-             <TeacherCombobox
-                value={activeId ? question.teacherId : selectedTeacher}
-                onChange={handleTeacherChange}
-             />
-             {teacherModalOpen && <TeacherModal onClose={() => setTeacherModalOpen(false)} />}
+           <div className="mb-4">
+              <TeacherSelector
+                 value={activeId ? question.teacherId : selectedTeacher}
+                 onChange={handleTeacherChange}
+                 onOpenPanel={() => setTeacherPanelOpen(true)}
+              />
+              {teacherPanelOpen && <TeacherPanel onClose={() => setTeacherPanelOpen(false)} />}
+           </div>
+
+          <div className="flex flex-col lg:flex-1 min-h-0">
+             <form className="flex flex-col flex-1 min-h-0" onSubmit={handleSubmit}>
+                <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
+                    <div>
+                       <label className="block text-xs font-bold text-slate-300 mb-1.5">Pregunta:</label>
+                        <textarea
+                           spellCheck={true}
+                           lang="es"
+                           className="w-full border border-slate-600 bg-slate-800 text-white placeholder:text-slate-400 px-3 py-2 rounded-lg outline-none text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
+                           rows={3}
+                           placeholder="Ingrese su pregunta"
+                           name="questionText"
+                           value={question.questionText}
+                           onChange={handleChange}
+                        />
+                    </div>
+
+                    <div className="border-t border-slate-800 pt-4">
+                       <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-bold text-slate-300">Alternativas:</label>
+                          <span className="text-xs text-slate-500">{question.options.length}/6</span>
+                       </div>
+                       {question.options.map((option, index) => {
+                          const isDuplicate = duplicateIndexes.includes(index)
+                          return (
+                             <div
+                                key={index}
+                                className={`flex items-center rounded-lg border transition-all mb-1.5 focus-within:ring-1 focus-within:ring-blue-400 ${
+                                   option.correct
+                                      ? 'bg-green-900/20 border-green-500 shadow-sm'
+                                      : isDuplicate
+                                      ? 'bg-red-900/20 border-red-500'
+                                      : 'bg-slate-800 border-slate-600 hover:bg-slate-700 hover:border-slate-500'
+                                }`}
+                             >
+                                <div
+                                   onClick={() => {
+                                      if (option.text.trim() === '') return;
+                                      const newOptions = question.options.map((opt, i) => ({ ...opt, correct: i === index }));
+                                      setQuestion({ ...question, options: newOptions });
+                                   }}
+                                   className={`flex items-center justify-center w-9 h-9 rounded-l-lg text-xs font-bold shrink-0 transition-colors cursor-pointer ${
+                                   option.correct
+                                      ? 'bg-green-600 text-white'
+                                      : isDuplicate
+                                      ? 'bg-red-500 text-white'
+                                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                }`}>
+                                   {option.correct ? '✓' : labelOptions(index).slice(0, -1)}
+                                </div>
+                                <input
+                                    spellCheck={true}
+                                    lang="es"
+                                    className="flex-1 text-white placeholder:text-slate-500 bg-transparent border-none outline-none ring-0 w-full text-sm py-2 px-2.5"
+                                    type="text"
+                                    placeholder="Ingrese la Alternativa"
+                                    value={option.text}
+                                    onChange={e => {
+                                      const newOptions = [...question.options];
+                                      newOptions[index].text = capitalizeFirstLetter(e.target.value)
+                                      setQuestion({ ...question, options: newOptions })
+                                   }}
+                                />
+                             </div>
+                          )
+                       })}
+
+                      <button
+                         type="button"
+                         className="w-full text-center bg-slate-800 p-1.5 rounded-lg hover:bg-slate-700 text-blue-400 disabled:opacity-20 disabled:cursor-not-allowed text-sm mt-1 border border-dashed border-slate-600 hover:border-slate-500 cursor-pointer"
+                         onClick={handleAddOption}
+                         disabled={question.options.length >= 6}
+                      >+ Añadir alternativa</button>
+                    </div>
+
+                    <div className="border-t border-slate-800 pt-4">
+                       <label className="block text-xs font-bold text-slate-300 mb-1.5">Retroalimentación:</label>
+                        <textarea
+                           spellCheck={true}
+                           lang="es"
+                           className="w-full border border-slate-600 bg-slate-800 text-white placeholder:text-slate-400 px-3 py-2 rounded-lg focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-sm resize-none"
+                           rows={2}
+                           placeholder="Retroalimentación para respuestas incorrectas"
+                           name="feedback"
+                           value={question.feedback}
+                           onChange={handleChange}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex gap-2 pt-3 mt-2 border-t border-slate-700">
+                   <input
+                      type="submit"
+                      value={activeId ? 'Actualizar' : 'Registrar'}
+                      disabled={!selectedTeacher || !question.options.some(o => o.correct) || hasDuplicateOptions(question.options) || Object.values(question).some(v => v === '')}
+                      className="bg-blue-600 hover:bg-blue-500 cursor-pointer w-full text-white font-bold p-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed text-sm transition-colors"
+                   />
+                   {activeId && (
+                      <button
+                         type="button"
+                         onClick={handleCancelEdit}
+                         className="bg-slate-700 hover:bg-slate-600 cursor-pointer text-slate-200 font-bold p-2 rounded-lg text-sm px-4 transition-colors"
+                      >Cancelar</button>
+                   )}
+                </div>
+             </form>
           </div>
-
-         <div className="bg-white rounded-lg p-3 lg:p-4 flex flex-col lg:flex-1 min-h-0">
-            <form className="flex flex-col flex-1 min-h-0" onSubmit={handleSubmit}>
-               <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
-                  <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Pregunta:</label>
-                     <textarea
-                        className="w-full border border-slate-400 bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg outline-none text-sm focus:border-blue-500"
-                        placeholder="Ingrese su pregunta"
-                        name="questionText"
-                        value={question.questionText}
-                        onChange={handleChange}
-                     />
-                  </div>
-
-                  <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Alternativas:</label>
-                     {question.options.map((option, index) => {
-                        const isDuplicate = duplicateIndexes.includes(index)
-                        return (
-                           <div key={index} className={`flex gap-2 items-center mb-1.5 ${option.correct ? 'bg-green-200 p-1.5 rounded-lg' : ''} ${isDuplicate ? 'bg-red-100 border border-red-400 rounded-lg p-1.5' : ''}`}>
-                              <span className="w-5 font-bold text-sm text-gray-600">{labelOptions(index)}</span>
-                              <input
-                                 className={`border py-1 px-2 rounded flex-1 text-gray-700 focus:outline-none focus:border-blue-500 w-full text-sm ${isDuplicate ? 'border-red-400 bg-red-50' : 'border-gray-400 bg-gray-50'}`}
-                                 type="text"
-                                 placeholder="Ingrese la Alternativa"
-                                 value={option.text}
-                                 onChange={e => {
-                                    const newOptions = [...question.options];
-                                    newOptions[index].text = capitalizeFirstLetter(e.target.value)
-                                    setQuestion({ ...question, options: newOptions })
-                                 }}
-                              />
-                              <input
-                                 className="cursor-pointer w-4 h-4"
-                                 type="radio"
-                                 name="correctOption"
-                                 checked={option.correct}
-                                 onChange={() => {
-                                    if (option.text.trim() === '') return;
-                                    const newOptions = question.options.map((opt, i) => ({
-                                       ...opt,
-                                       correct: i === index
-                                    }));
-                                    setQuestion({ ...question, options: newOptions });
-                                 }}
-                              />
-                           </div>
-                        )
-                     })}
-
-                     <button
-                        type="button"
-                        className="w-full text-center bg-slate-100 p-1 rounded-lg hover:bg-slate-200 text-blue-700 disabled:opacity-10 disabled:cursor-not-allowed text-sm mt-1"
-                        onClick={handleAddOption}
-                        disabled={question.options.length >= 6}
-                     >+ Añadir alternativa</button>
-                  </div>
-
-                  <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Retroalimentación:</label>
-                     <textarea
-                        className="w-full border border-gray-400 bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                        placeholder="Retroalimentación para respuestas incorrectas"
-                        name="feedback"
-                        value={question.feedback}
-                        onChange={handleChange}
-                     />
-                  </div>
-               </div>
-
-               <div className="flex gap-2 pt-3 mt-1 border-t border-gray-200">
-                  <input
-                     type="submit"
-                     value={activeId ? 'Actualizar' : 'Registrar'}
-                     disabled={!selectedTeacher || !question.options.some(o => o.correct) || hasDuplicateOptions(question.options) || Object.values(question).some(v => v === '')}
-                     className="bg-blue-700 hover:bg-blue-800 cursor-pointer w-full text-white font-bold p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  />
-                  {activeId && (
-                     <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        className="bg-gray-200 hover:bg-gray-300 cursor-pointer text-gray-700 font-bold p-2 rounded-lg text-sm px-4"
-                     >Cancelar</button>
-                  )}
-               </div>
-            </form>
-         </div>
       </aside>
    )
 }
