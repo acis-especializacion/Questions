@@ -253,7 +253,7 @@ function App() {
 
                <div className="p-3 bg-slate-800 flex justify-between items-center text-[11px] text-slate-500 border-t border-slate-700">
                   <span>Todos los derechos reservados @{new Date().getFullYear()} - <a href="https://www.facebook.com/nelson.huaman.20" target="_blank" className="text-slate-400 hover:text-white transition-colors font-bold cursor-pointer">Nelson Huamán</a></span>
-                  <span className="font-bold">Versión 6.0</span>
+                  <span className="font-bold">Versión 6.2</span>
                </div>
             </div>
          </div>

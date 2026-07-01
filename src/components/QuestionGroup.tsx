@@ -24,7 +24,7 @@ function QuestionGroup({ teacherName, teacherId, questions, onView, onDeleteRequ
       const el = contentRef.current
       if (!el) return
       el.style.maxHeight = open ? `${el.scrollHeight}px` : '0px'
-   }, [open])
+   }, [open, questions])
 
    return (
       <div>
